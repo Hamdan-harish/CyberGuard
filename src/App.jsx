@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState,useEffect} from 'react';
 import Sidebar from './components/Sidebar';
 import StatCard from './components/StatCard';
 import SecurityEvent from './components/SecurityEvent';
@@ -7,6 +7,8 @@ import IPIntelligence from './components/IPIntelligence';
 import {detectBruteForce,detectPortScan,
         detectSQLInjection
 } from './services/detectionEngine';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 
 const securityEvents = [
@@ -44,6 +46,34 @@ const securityEvents = [
 function App() {
   const [events,setEvents]=useState(securityEvents);
   const [activePage, setActivePage] = useState('Dashboard');
+  const [backendAlerts, setBackendAlerts] = useState([]);
+
+  useEffect(() => {
+
+    fetch(`${API_URL}/api/health`)
+      .then((response) => response.json())
+      .then((data) => {
+        console.log('Backend response:', data);
+      })
+      .catch((error) => {
+        console.error('Backend connection failed:', error);
+      });
+  
+  
+    fetch(`${API_URL}/api/alerts`)
+      .then((response) => response.json())
+      .then((data) => {
+  
+        console.log('Alerts from backend:', data);
+  
+        setBackendAlerts(data.data);
+  
+      })
+      .catch((error) => {
+        console.error('Failed to fetch alerts:', error);
+      });
+  
+  }, []);
 
   const criticalAlerts = events.filter(
     (event) => event.severity === 'CRITICAL'
@@ -65,139 +95,104 @@ function App() {
 
   const simulateBruteForce = () => {
 
-    const ip = '185.23.45.10';
+    fetch(`${API_URL}/api/simulate/bruteforce`, {
+      method: 'POST',
+    })
+      .then((response) => response.json())
+      .then((data) => {
   
-    const failedAttempts=12;
+        console.log('Brute force response:', data);
   
-    const newLoginEvents=[];
+        if (data.detected) {
+
+          setEvents((currentEvents) => [
+            data.alert,
+            ...currentEvents,
+          ]);
+        
+          setBackendAlerts((currentAlerts) => [
+            data.alert,
+            ...currentAlerts,
+          ]);
+        
+        }
   
-    for (let i=0;i<failedAttempts;i++) {
-  
-      newLoginEvents.push({
-        id: `login_${Date.now()}_${i}`,
-        type: 'LOGIN_FAILED',
-        description: 'Failed login attempt',
-        ip: ip,
-        time: 'Just now',
-        severity: 'LOW',
-        icon: '🔵',
+      })
+      .catch((error) => {
+        console.error(
+          'Brute force simulation failed:',
+          error
+        );
       });
-  
-    }
-  
-    console.log('Generated login events:', newLoginEvents);
-  
-    const bruteForceDetected = detectBruteForce(newLoginEvents);
-  
-    console.log('Brute force detected:', bruteForceDetected);
-
-    if (bruteForceDetected) {
-
-      const alert = {
-        id: `alert_${Date.now()}`,
-        type: 'Brute Force Attack',
-        description: `${failedAttempts} failed login attempts detected`,
-        ip: ip,
-        time: 'Just now',
-        severity: 'CRITICAL',
-        icon: '🔴',
-      };
-    
-      setEvents((currentEvents) => [
-        alert,
-        ...currentEvents,
-      ]);
-    }
   
   };
 
   const simulatePortScan = () => {
 
-    const ip = '91.204.18.73';
+    fetch(`${API_URL}/api/simulate/portscan`, {
+      method: 'POST',
+    })
+      .then((response) => response.json())
+      .then((data) => {
   
-    const ports = [21, 22, 23, 25, 53, 80, 443, 3306];
+        console.log('Port scan response:', data);
   
-    const portScanEvents = ports.map((port, index) => ({
-      id: `port_${Date.now()}_${index}`,
-      type: 'PORT_PROBE',
-      description: `Port ${port} probed`,
-      ip: ip,
-      port: port,
-      time: 'Just now',
-      severity: 'LOW',
-      icon: '🔵',
-    }));
+        if (data.detected) {
   
-    console.log('Generated port scan events:', portScanEvents);
+          setEvents((currentEvents) => [
+            data.alert,
+            ...currentEvents,
+          ]);
   
-    const portScanDetected = detectPortScan(portScanEvents);
+          setBackendAlerts((currentAlerts) => [
+            data.alert,
+            ...currentAlerts,
+          ]);
   
-    console.log('Port scan detected:', portScanDetected);
+        }
   
-    if (portScanDetected) {
-  
-      const alert = {
-        id: `alert_${Date.now()}`,
-        type: 'Port Scan Detected',
-        description: `${ports.length} different ports probed`,
-        ip: ip,
-        time: 'Just now',
-        severity: 'HIGH',
-        icon: '🟠',
-      };
-  
-      setEvents((currentEvents) => [
-        alert,
-        ...currentEvents,
-      ]);
-    }
+      })
+      .catch((error) => {
+        console.error(
+          'Port scan simulation failed:',
+          error
+        );
+      });
   
   };
 
   const simulateSQLInjection = () => {
 
-    const ip = '172.16.45.23';
+    fetch(`${API_URL}/api/simulate/sqlinjection`, {
+      method: 'POST',
+    })
+      .then((response) => response.json())
+      .then((data) => {
   
-    const maliciousRequest =
-      "SELECT * FROM users WHERE username='admin' OR '1'='1'";
+        console.log('SQL injection response:', data);
   
-    const sqlEvent = {
-      id: `sql_${Date.now()}`,
-      type: 'HTTP_REQUEST',
-      description: 'Suspicious SQL query detected',
-      ip: ip,
-      request: maliciousRequest,
-      time: 'Just now',
-      severity: 'LOW',
-      icon: '🔵',
-    };
+        if (data.detected) {
   
-    console.log('Generated HTTP request:', sqlEvent);
+          setEvents((currentEvents) => [
+            data.alert,
+            ...currentEvents,
+          ]);
   
-    const sqlInjectionDetected = detectSQLInjection([sqlEvent]);
+          setBackendAlerts((currentAlerts) => [
+            data.alert,
+            ...currentAlerts,
+          ]);
   
-    console.log(
-      'SQL injection detected:',
-      sqlInjectionDetected
-    );
+        }
   
-    if (sqlInjectionDetected) {
+      })
+      .catch((error) => {
+        console.error(
+          'SQL injection simulation failed:',
+          error
+        );
+      });
   
-      const alert = {
-        id: `alert_${Date.now()}`,
-        type: 'SQL Injection Attempt',
-        description: 'Malicious SQL query detected',
-        ip: ip,
-        time: 'Just now',
-        severity: 'HIGH',
-        icon: '🟠',
-      };
-  
-      setEvents((currentEvents) => [
-        alert,
-        ...currentEvents,
-      ]);
-    }
   };
   return (
     <div className="min-h-screen bg-slate-950 text-white flex">
@@ -221,7 +216,7 @@ function App() {
         {activePage === 'IP Intelligence' && (
           <IPIntelligence events={events} />
         )}
-        
+
         {activePage === 'Dashboard' && (
           <>
             <div className="flex items-start justify-between">
@@ -324,7 +319,7 @@ function App() {
 
             <div className="space-y-4">
 
-              {events.map((event) => (
+              {backendAlerts.map((event) => (
 
                 <div
                   key={event.id}
